@@ -1,8 +1,9 @@
 # Nautobot Docker 가이드
 
-로컬 환경에서 네트워크 자동화 및 SoT(Source of Truth) 테스트를 위한 Docker Compose 기반 Nautobot 3.1 배포 가이드입니다. 
-Golden Config 플러그인이 기본 포함되어 있으며, 필요에 따라 추가 앱(플러그인)을 설치하고 설정할 수 있습니다.
-보안은 전혀 고려하지 않았습니다. 로컬환경에서만 사용하세요.
+로컬 환경에서 네트워크 자동화 및 SoT(Source of Truth) 테스트를 위한 Docker Compose 기반 Nautobot 3.1 배포 가이드입니다.  
+Golden Config 플러그인이 기본 포함되어 있으며, 필요에 따라 추가 앱(플러그인)을 설치하고 설정할 수 있습니다.  
+
+> **주의**: 보안을 고려하지 않은 구성이므로 외부 공개 없이 로컬 환경에서만 사용하세요.
 
 ---
 
@@ -40,6 +41,26 @@ docker compose run --rm nautobot nautobot-server post_upgrade
 
 # 4. 서비스 실행
 docker compose up -d
+```
+
+### 정상 실행 확인 예시
+```bash
+skullq@containerlab:~/nautobot-docker# docker compose up -d
+[+] up 6/6
+ ✔ Network nautobot-docker_default                Created                                                   
+ ✔ Container nautobot-docker-db-1                 Started                                                   
+ ✔ Container nautobot-docker-redis-1              Started                                                   
+ ✔ Container nautobot-docker-nautobot-worker-1    Started                                                   
+ ✔ Container nautobot-docker-nautobot-1           Started                                                   
+ ✔ Container nautobot-docker-nautobot-scheduler-1 Started
+
+skullq@containerlab:~/nautobot-docker# docker ps -a
+CONTAINER ID   IMAGE                                        COMMAND                  CREATED              STATUS                        PORTS                                                   NAMES
+648b1a41a01f   nautobot-docker-nautobot-scheduler           "nautobot-server cel…"   About a minute ago   Up About a minute (healthy)   8080/tcp, 8443/tcp                                      nautobot-docker-nautobot-scheduler-1
+97084d5c574f   nautobot-docker-nautobot                     "/docker-entrypoint.…"   About a minute ago   Up About a minute (healthy)   8443/tcp, 0.0.0.0:8888->8080/tcp, [::]:8888->8080/tcp   nautobot-docker-nautobot-1
+2afd71d537aa   nautobot-docker-nautobot-worker              "nautobot-server cel…"   About a minute ago   Up About a minute (healthy)   8080/tcp, 8443/tcp                                      nautobot-docker-nautobot-worker-1
+3ecde5994807   redis:7-alpine                               "docker-entrypoint.s…"   About a minute ago   Up About a minute             6379/tcp                                                nautobot-docker-redis-1
+439e619c2937   postgres:15-alpine                           "docker-entrypoint.s…"   About a minute ago   Up About a minute             5432/tcp                                                nautobot-docker-db-1
 ```
 
 실행 후 웹 브라우저에서 `http://localhost:8888`로 접속합니다.
@@ -122,25 +143,6 @@ PLUGINS_CONFIG = {
 docker compose restart nautobot nautobot-worker nautobot-scheduler
 ```
 
-```bash
-skullq@containerlab:~/nautobot-docker# docker compose up -d
-[+] up 6/6
- ✔ Network nautobot-docker_default                Created                                                   
- ✔ Container nautobot-docker-db-1                 Started                                                   
- ✔ Container nautobot-docker-redis-1              Started                                                   
- ✔ Container nautobot-docker-nautobot-worker-1    Started                                                   
- ✔ Container nautobot-docker-nautobot-1           Started                                                   
- ✔ Container nautobot-docker-nautobot-scheduler-1 Started
-
-skullq@containerlab:~/nautobot-docker# docker ps -a
-CONTAINER ID   IMAGE                                        COMMAND                  CREATED              STATUS                        PORTS                                                   NAMES
-648b1a41a01f   nautobot-docker-nautobot-scheduler           "nautobot-server cel…"   About a minute ago   Up About a minute (healthy)   8080/tcp, 8443/tcp                                      nautobot-docker-nautobot-scheduler-1
-97084d5c574f   nautobot-docker-nautobot                     "/docker-entrypoint.…"   About a minute ago   Up About a minute (healthy)   8443/tcp, 0.0.0.0:8888->8080/tcp, [::]:8888->8080/tcp   nautobot-docker-nautobot-1
-2afd71d537aa   nautobot-docker-nautobot-worker              "nautobot-server cel…"   About a minute ago   Up About a minute (healthy)   8080/tcp, 8443/tcp                                      nautobot-docker-nautobot-worker-1
-3ecde5994807   redis:7-alpine                               "docker-entrypoint.s…"   About a minute ago   Up About a minute             6379/tcp                                                nautobot-docker-redis-1
-439e619c2937   postgres:15-alpine                           "docker-entrypoint.s…"   About a minute ago   Up About a minute             5432/tcp                                                nautobot-docker-db-1
-```
-
 ---
 
 ## 운영 명령어
@@ -189,8 +191,14 @@ docker compose exec nautobot bash
 docker compose run --rm nautobot nautobot-server nbshell
 ```
 
-### 데이터 초기화
+### 데이터 및 이미지 완전 초기화
 ```bash
-# 컨테이너 및 볼륨(DB 데이터) 완전 삭제
+# 1. 컨테이너 및 볼륨(DB 데이터)만 삭제
 docker compose down -v
+
+# 2. 컨테이너, 볼륨, 빌드된/사용된 Docker 이미지까지 전부 완전 삭제
+docker compose down -v --rmi all
+
+# 3. (선택) 빌드 캐시까지 삭제하여 디스크 공간 완전 확보
+docker builder prune -f
 ```
