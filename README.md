@@ -122,6 +122,25 @@ PLUGINS_CONFIG = {
 docker compose restart nautobot nautobot-worker nautobot-scheduler
 ```
 
+```bash
+skullq@containerlab:~/nautobot-docker# docker compose up -d
+[+] up 6/6
+ ✔ Network nautobot-docker_default                Created                                                   
+ ✔ Container nautobot-docker-db-1                 Started                                                   
+ ✔ Container nautobot-docker-redis-1              Started                                                   
+ ✔ Container nautobot-docker-nautobot-worker-1    Started                                                   
+ ✔ Container nautobot-docker-nautobot-1           Started                                                   
+ ✔ Container nautobot-docker-nautobot-scheduler-1 Started
+
+skullq@containerlab:~/nautobot-docker# docker ps -a
+CONTAINER ID   IMAGE                                        COMMAND                  CREATED              STATUS                        PORTS                                                   NAMES
+648b1a41a01f   nautobot-docker-nautobot-scheduler           "nautobot-server cel…"   About a minute ago   Up About a minute (healthy)   8080/tcp, 8443/tcp                                      nautobot-docker-nautobot-scheduler-1
+97084d5c574f   nautobot-docker-nautobot                     "/docker-entrypoint.…"   About a minute ago   Up About a minute (healthy)   8443/tcp, 0.0.0.0:8888->8080/tcp, [::]:8888->8080/tcp   nautobot-docker-nautobot-1
+2afd71d537aa   nautobot-docker-nautobot-worker              "nautobot-server cel…"   About a minute ago   Up About a minute (healthy)   8080/tcp, 8443/tcp                                      nautobot-docker-nautobot-worker-1
+3ecde5994807   redis:7-alpine                               "docker-entrypoint.s…"   About a minute ago   Up About a minute             6379/tcp                                                nautobot-docker-redis-1
+439e619c2937   postgres:15-alpine                           "docker-entrypoint.s…"   About a minute ago   Up About a minute             5432/tcp                                                nautobot-docker-db-1
+```
+
 ---
 
 ## 운영 명령어

@@ -1,5 +1,3 @@
-version: "3.8"
-
 # ⚠️ 주의: 공통 앵커 설정 (들여쓰기 없음)
 x-nautobot-base: &nautobot-base
   build:
