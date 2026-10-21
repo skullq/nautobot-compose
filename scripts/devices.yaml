@@ -1,0 +1,108 @@
+# ==============================================================================
+# Nautobot Cisco 장비 및 Golden Config 연동용 인벤토리 정의 파일
+# - Golden Config가 SSH로 접속하여 전체 설정 및 IP를 수집할 수 있도록
+#   접속에 필요한 최소한의 관리 정보(Primary IP, Platform)만 정의합니다.
+# ==============================================================================
+
+# 1. 위치 유형 (Location Types)
+location_types:
+  - name: "Site"
+    content_types:
+      - "dcim.device"
+
+# 2. 위치 (Locations)
+locations:
+  - name: "Seoul-Lab"
+    location_type: "Site"
+    status: "Active"
+
+# 3. 제조사 (Manufacturer - Cisco 전용)
+manufacturers:
+  - name: "Cisco"
+
+# 4. 플랫폼 (Platforms) - Golden Config Nornir/Netmiko 드라이버 연동
+platforms:
+  - name: "cisco_ios"
+    manufacturer: "Cisco"
+    network_driver: "cisco_ios"
+  - name: "cisco_xe"
+    manufacturer: "Cisco"
+    network_driver: "cisco_ios"
+
+# 5. 장비 모델 (Device Types - Cisco 대표 모델)
+device_types:
+  - model: "IOL"
+    manufacturer: "Cisco"
+  - model: "C8000V"
+    manufacturer: "Cisco"
+  - model: "CSR1000V"
+    manufacturer: "Cisco"
+  - model: "Catalyst-9300"
+    manufacturer: "Cisco"
+  - model: "Cisco-Router"
+    manufacturer: "Cisco"
+
+# 6. 장비 역할 (Roles)
+roles:
+  - name: "Router"
+    color: "1f77b4"
+    content_types:
+      - "dcim.device"
+  - name: "Switch"
+    color: "2ca02c"
+    content_types:
+      - "dcim.device"
+
+# 7. 관리 IP 대역 (Prefixes) - SSH 접속용 Primary IP 생성 시 필수
+prefixes:
+  - prefix: "192.168.100.0/24"
+    namespace: "Global"
+    status: "Active"
+    type: "network"
+
+# 8. Golden Config 수집 대상 장비 (Devices)
+devices:
+  - name: "r1"
+    role: "Router"
+    device_type: "IOL"
+    location: "Seoul-Lab"
+    platform: "cisco_ios"
+    status: "Active"
+    management_ip: "192.168.100.11/24"
+    interface_name: "Ethernet0/0"
+
+  - name: "r2"
+    role: "Router"
+    device_type: "IOL"
+    location: "Seoul-Lab"
+    platform: "cisco_ios"
+    status: "Active"
+    management_ip: "192.168.100.12/24"
+    interface_name: "Ethernet0/0"
+
+  - name: "r3"
+    role: "Router"
+    device_type: "IOL"
+    location: "Seoul-Lab"
+    platform: "cisco_ios"
+    status: "Active"
+    management_ip: "192.168.100.13/24"
+    interface_name: "Ethernet0/0"
+
+  - name: "r4"
+    role: "Router"
+    device_type: "IOL"
+    location: "Seoul-Lab"
+    platform: "cisco_ios"
+    status: "Active"
+    management_ip: "192.168.100.14/24"
+    interface_name: "Ethernet0/0"
+
+  - name: "r5"
+    role: "Router"
+    device_type: "IOL"
+    location: "Seoul-Lab"
+    platform: "cisco_ios"
+    status: "Active"
+    management_ip: "192.168.100.15/24"
+    interface_name: "Ethernet0/0"

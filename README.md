@@ -10,9 +10,10 @@ Golden Config 플러그인이 기본 포함되어 있으며, 필요에 따라 �
 ## 목차
 1. [기본 접속 정보](#기본-접속-정보)
 2. [초기 실행 (Quick Start)](#초기-실행-quick-start)
-3. [신규 앱(플러그인) 추가](#신규-앱플러그인-추가)
-4. [앱 옵션 변경](#앱-옵션-변경)
-5. [운영 명령어](#운영-명령어)
+3. [장비 및 초기 데이터 일괄 등록](#장비-및-초기-데이터-일괄-등록)
+4. [신규 앱(플러그인) 추가](#신규-앱플러그인-추가)
+5. [앱 옵션 변경](#앱-옵션-변경)
+6. [운영 명령어](#운영-명령어)
 
 ---
 
@@ -64,6 +65,18 @@ CONTAINER ID   IMAGE                                        COMMAND             
 ```
 
 실행 후 웹 브라우저에서 `http://localhost:8888`로 접속합니다.
+
+---
+
+## 장비 및 초기 데이터 일괄 등록
+
+테스트를 위한 선행 데이터(위치, 제조사, 장비 모델, 역할, IP 대역)와 장비 목록을 한 번에 자동 생성하려면 아래 스크립트를 실행합니다.
+
+```bash
+# 선행 필수 데이터 및 샘플 장비(Spine 2대, Leaf 2대) 일괄 등록
+python3 scripts/init_devices.py
+```
+> 등록할 장비 목록이나 IP 대역은 [scripts/devices.yaml](file:///root/nautobot-docker/scripts/devices.yaml)에서 수정할 수 있습니다. 자세한 내용은 [scripts/README.md](file:///root/nautobot-docker/scripts/README.md)를 참고하세요.
 
 ---
 
