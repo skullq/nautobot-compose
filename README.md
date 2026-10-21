@@ -1,103 +1,78 @@
-# 🌐 Nautobot Docker 가이드
+# Nautobot Docker 가이드
 
-Docker Compose 기반의 **Nautobot 3.1** 환경 운영 및 **앱(플러그인) 확장/설정 가이드**입니다.
-
----
-
-## 📌 목차
-1. [기본 환경 및 접속 정보](#-기본-환경-및-접속-정보)
-2. [빠른 시작 (Quick Start)](#-빠른-시작-quick-start)
-3. [새로운 App(플러그인) 추가 가이드](#-새로운-app플러그인-추가-가이드)
-4. [App 옵션 및 세부 설정 변경 가이드](#-app-옵션-및-세부-설정-변경-가이드)
-5. [자주 사용하는 운영 명령어](#-자주-사용하는-운영-명령어)
+로컬 환경에서 네트워크 자동화 및 SoT(Source of Truth) 테스트를 위한 Docker Compose 기반 Nautobot 3.1 배포 가이드입니다. 
+Golden Config 플러그인이 기본 포함되어 있으며, 필요에 따라 추가 앱(플러그인)을 설치하고 설정할 수 있습니다.
+보안은 전혀 고려하지 않았습니다. 로컬환경에서만 사용하세요.
 
 ---
 
-## 🖥 기본 환경 및 접속 정보
-
-| 항목 | 정보 | 비고 |
-| :--- | :--- | :--- |
-| **Web UI 접속 주소** | `http://localhost:8888` | 호스트 8888 ➔ 컨테이너 8080 |
-| **관리자 계정 (ID)** | `admin` | docker-compose.yml 설정 기준 |
-| **관리자 비밀번호** | `admin` | 초기 비밀번호 |
-| **API 토큰** | `0123456789abcdef0123456789abcdef01234567` | REST API / 자동화 연동용 |
-| **주요 서비스** | Nautobot Web, Celery Worker, Celery Beat, PostgreSQL 15, Redis 7 | 5개 컨테이너 구성 |
+## 목차
+1. [기본 접속 정보](#기본-접속-정보)
+2. [초기 실행 (Quick Start)](#초기-실행-quick-start)
+3. [신규 앱(플러그인) 추가](#신규-앱플러그인-추가)
+4. [앱 옵션 변경](#앱-옵션-변경)
+5. [운영 명령어](#운영-명령어)
 
 ---
 
-## 🚀 빠른 시작 (Quick Start)
+## 기본 접속 정보
 
-처음 환경을 구축하거나 전체 컨테이너를 올릴 때 실행하는 표준 절차입니다.
+| 항목 | 내용 |
+| :--- | :--- |
+| **Web UI** | `http://localhost:8888` |
+| **계정** | ID: `admin` / PW: `admin` |
+| **API Token** | `0123456789abcdef0123456789abcdef01234567` |
+| **구성 컨테이너** | Nautobot Web, Celery Worker, Celery Beat, PostgreSQL 15, Redis 7 |
+
+---
+
+## 초기 실행 (Quick Start)
 
 ```bash
-# 1. Compose 문법 및 파싱 상태 점검
+# 1. 설정 검증
 docker compose config
 
-# 2. 이미지 빌드 (캐시 제외)
+# 2. 이미지 빌드
 docker compose build --no-cache
 
-# 3. DB 스키마 마이그레이션 및 정적 파일 수집
+# 3. DB 마이그레이션 및 정적 파일 수집
 docker compose run --rm nautobot nautobot-server post_upgrade
 
-# 4. 모든 서비스 백그라운드 실행
+# 4. 서비스 실행
 docker compose up -d
 ```
 
-> [!TIP]
-> 웹 브라우저에서 `http://localhost:8888`로 접속한 뒤 `admin` / `admin`으로 로그인합니다.
+실행 후 웹 브라우저에서 `http://localhost:8888`로 접속합니다.
 
 ---
 
-## 🧩 새로운 App(플러그인) 추가 가이드
+## 신규 앱(플러그인) 추가
 
-Nautobot에 새로운 앱(예: `nautobot-device-lifecycle-mgmt`, `nautobot-bgp-models` 등)을 설치하려면 **3개의 파일**을 확인 및 수정해야 합니다.
+새로운 Nautobot 앱을 설치할 때는 다음 3단계를 진행합니다.
 
-### Step 1. `Dockerfile`에 패키지 추가
-새 앱을 설치하기 위해 `pip install` 목록에 패키지명을 추가합니다. (C 라이브러리나 OS 종속성이 필요한 경우 `apt-get` 영역에 추가)
+### 1. Dockerfile 수정
+설치할 패키지를 `pip install` 목록에 추가합니다. (OS 라이브러리가 필요하면 `apt-get`에 추가)
 
 ```dockerfile
-# Dockerfile 예시
-...
-# OS 종속성이 필요한 경우 여기에 추가
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    git \
-    openssh-client \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-
-# 파이썬 앱 패키지 설치 목록에 추가 (하이픈(-) 사용)
+# Dockerfile
 RUN pip install --no-cache-dir \
     nautobot-plugin-nornir \
     nautobot-golden-config \
-    nautobot-device-lifecycle-mgmt  # <-- 새로 추가할 앱
-...
+    nautobot-device-lifecycle-mgmt  # 신규 패키지명 (하이픈 사용)
 ```
 
----
-
-### Step 2. `nautobot_config.py`의 `PLUGINS` 리스트에 등록
-Nautobot이 앱을 로드할 수 있도록 Python 모듈명을 `PLUGINS` 리스트에 추가합니다.
-
-> [!WARNING]
-> PyPI 패키지명은 하이픈(`-`)을 주로 사용하지만, Python 모듈명은 **언더스코어(`_`)**를 사용해야 합니다.  
-> 예: `nautobot-device-lifecycle-mgmt` (pip) ➔ `"nautobot_device_lifecycle_mgmt"` (PLUGINS)
+### 2. nautobot_config.py 등록
+앱 모듈명을 `PLUGINS` 및 `PLUGINS_CONFIG`에 추가합니다.  
+*(주의: 파이썬 모듈명이므로 하이픈`-` 대신 언더스코어`_`를 사용합니다.)*
 
 ```python
-# nautobot_config.py 예시
+# nautobot_config.py
 PLUGINS = [
     "nautobot_plugin_nornir",
     "nautobot_golden_config",
-    "nautobot_device_lifecycle_mgmt",  # <-- 언더스코어(_)로 등록
+    "nautobot_device_lifecycle_mgmt",  # 신규 앱 모듈명
 ]
-```
 
----
-
-### Step 3. `nautobot_config.py`의 `PLUGINS_CONFIG`에 앱 옵션 선언
-해당 앱에서 요구하거나 활성화할 설정값을 `PLUGINS_CONFIG` 딕셔너리에 정의합니다. 별도 설정이 필요 없더라도 빈 딕셔너리(`{}`)를 명시해 주는 것이 안전합니다.
-
-```python
-# nautobot_config.py 예시
 PLUGINS_CONFIG = {
     "nautobot_plugin_nornir": {},
     "nautobot_golden_config": {
@@ -105,109 +80,97 @@ PLUGINS_CONFIG = {
         "enable_compliance": True,
         "enable_backup": True,
     },
-    # 새로 추가한 앱의 옵션 설정
-    "nautobot_device_lifecycle_mgmt": {
-        # 앱 공식 문서의 설정 키-값 추가 (예시)
-        # "barchart_bar_width": 0.1,
-    },
+    "nautobot_device_lifecycle_mgmt": {},  # 신규 앱 설정 (기본은 빈 딕셔너리)
 }
 ```
 
----
-
-### Step 4. 빌드 및 스키마 마이그레이션 (`post_upgrade`) 실행
-새로운 패키지가 이미지에 들어가고 DB 테이블이 생성되어야 하므로 **빌드와 마이그레이션이 필수**입니다.
+### 3. 빌드 및 마이그레이션 반영
+이미지를 다시 빌드하고 마이그레이션을 실행합니다.
 
 ```bash
-# 1. 새 패키지를 포함하여 이미지 재빌드
+# 이미지 재빌드
 docker compose build --no-cache
 
-# 2. 새 앱의 DB 테이블 마이그레이션 실행 (중요!)
+# DB 마이그레이션
 docker compose run --rm nautobot nautobot-server post_upgrade
 
-# 3. 변경된 이미지로 서비스 재시작
+# 서비스 시작
 docker compose up -d
 ```
 
 ---
 
-## ⚙️ App 옵션 및 세부 설정 변경 가이드
+## 앱 옵션 변경
 
-이미 설치된 앱의 **옵션(ON/OFF 또는 설정값)만 변경**할 때의 절차입니다.  
-`nautobot_config.py`는 볼륨으로 호스트와 컨테이너가 직접 연결되어 있으므로, **도커 이미지를 다시 빌드할 필요가 없습니다.**
+이미 설치된 앱의 설정값이나 기능 플래그만 변경할 때는 **이미지 재빌드가 필요 없습니다.**  
+`nautobot_config.py`는 볼륨으로 연결되어 있어 컨테이너 재시작만으로 반영됩니다.
 
-### 1. `nautobot_config.py` 파일 수정
-`PLUGINS_CONFIG` 딕셔너리에서 원하는 기능의 플래그를 수정합니다.
-
+### 1. nautobot_config.py 수정
 ```python
 # nautobot_config.py
 PLUGINS_CONFIG = {
     "nautobot_golden_config": {
-        "enable_intended": True,   # 설계된 표준 설정(Intended Config) ON / OFF
-        "enable_compliance": True, # 컴플라이언스 분석 ON / OFF
-        "enable_backup": True,     # 장비 CLI 설정 백업 ON / OFF
+        "enable_intended": True,
+        "enable_compliance": False,  # 변경할 옵션
+        "enable_backup": True,
     },
 }
 ```
 
-### 2. 컨테이너 재시작 (즉시 반영)
-설정 파일이 다시 읽혀지도록 컨테이너만 재시작합니다.
-
+### 2. 컨테이너 재시작
 ```bash
-# Nautobot 웹, 워커, 스케줄러 재시작 (수 초 내 완료)
 docker compose restart nautobot nautobot-worker nautobot-scheduler
 ```
 
-> [!NOTE]
-> DB 스키마가 변경되지 않는 단순 설정값/옵션 토글은 `post_upgrade`나 `build` 과정 없이 `restart`만으로 즉시 적용됩니다.
-
 ---
 
-## 🛠 자주 사용하는 운영 명령어
+## 운영 명령어
 
-### 서비스 상태 및 로그 모니터링
+### 로그 확인
 ```bash
-# 전체 컨테이너 상태 확인
-docker compose ps
-
-# Nautobot 웹 서버 실시간 로그 확인
+# Nautobot 웹 서버 로그
 docker compose logs -f nautobot
 
-# 백그라운드 워커 로그 확인 (잡 실행 로그)
+# Celery Worker 로그
 docker compose logs -f nautobot-worker
 
-# 전체 서비스 로그 확인
+# 전체 서비스 로그
 docker compose logs -f
 ```
 
-### 서비스 중지 및 재시작
+### 서비스 제어
 ```bash
-# 서비스 일시 정지 없이 재시작
+# 서비스 재시작
 docker compose restart
 
-# 모든 서비스 정상 종료 (데이터는 볼륨에 보존)
-docker compose down
-
-# 모든 서비스 백그라운드 시작
+# 백그라운드 시작
 docker compose up -d
+
+# 서비스 종료 (DB 데이터 보존)
+docker compose down
 ```
 
-### 컨테이너 내부 셸 접속 및 관리 명령어
+### 마이그레이션 (운영 중)
+컨테이너가 이미 실행 중일 때는 `exec`로 직접 마이그레이션을 수행할 수 있습니다.
+
 ```bash
-# 1. [운영 중] 실행 중인 컨테이너에서 즉시 DB 마이그레이션만 실행
+# DB 마이그레이션만 실행
 docker compose exec nautobot nautobot-server migrate
 
-# 2. [운영 중] 실행 중인 컨테이너에서 post_upgrade(마이그레이션+정적파일+캐시정리) 실행
+# 전체 업그레이드 작업 (마이그레이션 + 정적파일 + 캐시 정리)
 docker compose exec nautobot nautobot-server post_upgrade
+```
 
-# 3. Nautobot 컨테이너 bash 접속
+### 셸 접속
+```bash
+# 컨테이너 bash 접속
 docker compose exec nautobot bash
 
-# 4. Nautobot 관리자 셸(Django Shell) 실행
+# Nautobot nbshell (Django Shell) 접속
 docker compose run --rm nautobot nautobot-server nbshell
 ```
 
-### 초기화 (주의: 모든 DB 데이터 삭제)
+### 데이터 초기화
 ```bash
 # 컨테이너 및 볼륨(DB 데이터) 완전 삭제
 docker compose down -v
