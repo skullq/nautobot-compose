@@ -1,7 +1,7 @@
 # Nautobot Docker 가이드
 
 로컬 환경에서 네트워크 자동화 및 SoT(Source of Truth) 테스트를 위한 Docker Compose 기반 Nautobot 3.1 배포 가이드입니다.  
-Golden Config 플러그인이 기본 포함되어 있으며, 필요에 따라 추가 앱(플러그인)을 설치하고 설정할 수 있습니다.  
+**Golden Config**, **Nornir**, **Topology Views**, **SSoT** 플러그인이 기본 포함되어 구성되어 있으며, 필요에 따라 추가 앱(플러그인)을 설치하고 설정할 수 있습니다.  
 
 > **주의**: 보안을 고려하지 않은 구성이므로 외부 공개 없이 로컬 환경에서만 사용하세요.
 
@@ -9,11 +9,15 @@ Golden Config 플러그인이 기본 포함되어 있으며, 필요에 따라 �
 
 ## 목차
 1. [기본 접속 정보](#기본-접속-정보)
-2. [초기 실행 (Quick Start)](#초기-실행-quick-start)
-3. [장비 및 초기 데이터 일괄 등록](#장비-및-초기-데이터-일괄-등록)
-4. [신규 앱(플러그인) 추가](#신규-앱플러그인-추가)
-5. [앱 옵션 변경](#앱-옵션-변경)
-6. [운영 명령어](#운영-명령어)
+2. [주요 탑재 플러그인 & 활용](#주요-탑재-플러그인--활용)
+   - [Golden Config (형상 관리 & 백업)](#1-golden-config-설정-형상-관리--백업)
+   - [Topology Views (네트워크 토폴로지 시각화)](#2-topology-views-네트워크-토폴로지-시각화)
+   - [SSoT (데이터 동기화 & 통합)](#3-ssot-single-source-of-truth-데이터-동기화)
+3. [초기 실행 (Quick Start)](#초기-실행-quick-start)
+4. [장비 및 초기 데이터 일괄 등록](#장비-및-초기-데이터-일괄-등록)
+5. [신규 앱(플러그인) 추가](#신규-앱플러그인-추가)
+6. [앱 옵션 변경](#앱-옵션-변경)
+7. [운영 명령어](#운영-명령어)
 
 ---
 
@@ -24,7 +28,60 @@ Golden Config 플러그인이 기본 포함되어 있으며, 필요에 따라 �
 | **Web UI** | `http://localhost:8888` |
 | **계정** | ID: `admin` / PW: `admin` |
 | **API Token** | `0123456789abcdef0123456789abcdef01234567` |
+| **토폴로지 뷰** | `http://localhost:8888/plugins/topology-views/topology/` (상단 메뉴 `Plugins` → `Topology Views`) |
+| **SSoT 대시보드** | `http://localhost:8888/plugins/ssot/` (상단 메뉴 `SSoT` 또는 `Plugins` → `SSoT`) |
 | **구성 컨테이너** | Nautobot Web, Celery Worker, Celery Beat, PostgreSQL 15, Redis 7 |
+| **탑재 플러그인** | `nautobot-golden-config`, `nautobot-plugin-nornir`, `nautobot-topology-views`, `nautobot-ssot` |
+
+---
+
+## 주요 탑재 플러그인 & 활용
+
+### 1. Golden Config (설정 형상 관리 & 백업)
+- **개요**: 네트워크 장비의 실제 CLI 구성을 자동으로 백업하고, SoT 표준 형상(Intended)과 비교 분석하는 자동화 앱입니다.
+- **주요 기능**:
+  - **자동 백업**: Celery Beat 스케줄러를 통한 30분 주기 자동 백업
+  - **수동 백업**: `python3 scripts/run_backup.py` 실행 또는 Web UI Jobs 메뉴에서 원클릭 백업 트리거
+  - **로컬 Git 연동**: 백업된 장비 설정은 `./git_repos/golden_config/` 로컬 Git 리포지토리에 자동 커밋되어 안전하게 보관
+  - **GraphQL 조회**: GraphQL API (`/api/graphql/`)를 통해 백업 이력 및 컴플라이언스 상태 쿼리 가능
+
+### 2. Topology Views (네트워크 토폴로지 시각화)
+- **개요**: Nautobot에 등록된 장비(Devices)와 인터페이스 간 연결(Cables) 데이터를 분석하여 인터랙티브한 네트워크 토폴로지 다이어그램을 시각화합니다.
+- **접속 방법**:
+  - 웹 브라우저에서 `http://localhost:8888/plugins/topology-views/topology/` 로 바로 이동
+  - 또는 Nautobot 상단 네비게이션 바에서 **`Plugins`** → **`Topology Views`** 선택
+- **주요 기능**:
+  - **동적 필터링**: Location(사이트), 장비 역할(Role), 태그, 디바이스 타입 등으로 원하는 영역만 선택하여 다이어그램 생성
+  - **좌표 드래그 및 저장**: 토폴로지 맵에서 노드를 드래그하여 배치한 뒤, 현재 레이아웃 좌표를 저장하여 다음에 동일한 형태로 유지 가능 (`allow_coordinates_saving: True`)
+  - **장비 정보 팝업**: 노드를 클릭하면 IP 주소, 모델, 시리얼 번호 등의 상세 정보 확인
+  - **인터페이스 연결 시각화**: 인터페이스 간 물리 케이블 연결 및 상태를 다이어그램에 선으로 표시
+- **설정 옵션 (`nautobot_config.py`)**:
+  ```python
+  PLUGINS_CONFIG = {
+      "nautobot_topology_views": {
+          "allow_coordinates_saving": True,   # 사용자 정의 노드 배치 좌표 저장 허용
+          "always_save_coordinates": False,   # 이동 즉시 자동 저장 여부 (선택)
+      },
+  }
+  ```
+
+### 3. SSoT (Single Source of Truth, 데이터 동기화)
+- **개요**: 외부 IT 시스템(ServiceNow, Cisco ACI, Infoblox, IP Fabric 등) 또는 사용자 정의 데이터 소스와 Nautobot 간의 양방향 데이터 집계 및 동기화를 중계하는 핵심 프레임워크입니다 (`DiffSync` 엔진 기반).
+- **접속 방법**:
+  - 웹 브라우저에서 `http://localhost:8888/plugins/ssot/` 로 이동
+  - 또는 상단 네비게이션 바의 **`SSoT`** 메뉴 (또는 **`Plugins`** → **`SSoT`**) 선택
+- **주요 기능**:
+  - **DiffSync 엔진**: 두 시스템 간 데이터의 생성(Create), 수정(Update), 삭제(Delete) 차이점을 계산하여 정확한 동기화 수행
+  - **대시보드 & 잡 이력**: 동기화 이력, 변경 사항(Diff), 실행 상태 및 로그를 직관적인 대시보드에서 실시간 모니터링
+  - **확장 통합(Integrations)**: 필요에 따라 ServiceNow, Infoblox, CloudVision, ACI 등의 공식 어댑터를 활성화하거나 직접 커스텀 DiffSync 동기화 Job 등록 가능
+- **설정 옵션 (`nautobot_config.py`)**:
+  ```python
+  PLUGINS_CONFIG = {
+      "nautobot_ssot": {
+          "hide_example_jobs": False,  # SSoT 예제 동기화 잡 표시 여부
+      },
+  }
+  ```
 
 ---
 
@@ -70,11 +127,14 @@ CONTAINER ID   IMAGE                                        COMMAND             
 
 ## 장비 및 초기 데이터 일괄 등록
 
-테스트를 위한 선행 데이터(위치, 제조사, 장비 모델, 역할, IP 대역)와 장비 목록을 한 번에 자동 생성하려면 아래 스크립트를 실행합니다.
+테스트를 위한 선행 데이터(위치, 제조사, 장비 모델, 역할, IP 대역)와 장비 목록, 그리고 장비 간 케이블 연결을 자동 생성하려면 아래 스크립트를 순서대로 실행합니다.
 
 ```bash
-# 선행 필수 데이터 및 샘플 장비(Spine 2대, Leaf 2대) 일괄 등록
+# 1. 선행 필수 데이터 및 대상 장비(r1 ~ r5) 일괄 등록
 python3 scripts/init_devices.py
+
+# 2. 장비 간 인터페이스 및 케이블(Cable) 연결 등록 (Topology View 시각화용)
+python3 scripts/init_cables.py
 ```
 > 등록할 장비 목록이나 IP 대역은 [scripts/devices.yaml](file:///root/nautobot-docker/scripts/devices.yaml)에서 수정할 수 있습니다. 자세한 내용은 [scripts/README.md](file:///root/nautobot-docker/scripts/README.md)를 참고하세요.
 
@@ -90,9 +150,12 @@ python3 scripts/init_devices.py
 ```dockerfile
 # Dockerfile
 RUN pip install --no-cache-dir \
+    "scrapli<2026" \
     nautobot-plugin-nornir \
     nautobot-golden-config \
-    nautobot-device-lifecycle-mgmt  # 신규 패키지명 (하이픈 사용)
+    "nautobot-topology-views==4.5.1.1" \
+    "nautobot-ssot==4.7.0" \
+    nautobot-device-lifecycle-mgmt  # 추가할 신규 패키지명 (하이픈 사용)
 ```
 
 ### 2. nautobot_config.py 등록
@@ -104,15 +167,28 @@ RUN pip install --no-cache-dir \
 PLUGINS = [
     "nautobot_plugin_nornir",
     "nautobot_golden_config",
+    "nautobot_topology_views",
+    "nautobot_ssot",
     "nautobot_device_lifecycle_mgmt",  # 신규 앱 모듈명
 ]
 
 PLUGINS_CONFIG = {
-    "nautobot_plugin_nornir": {},
+    "nautobot_plugin_nornir": {
+        "nornir_settings": {
+            "credentials": "nautobot_plugin_nornir.plugins.credentials.nautobot_secrets.CredentialsNautobotSecrets",
+        },
+    },
     "nautobot_golden_config": {
         "enable_intended": True,
         "enable_compliance": True,
         "enable_backup": True,
+    },
+    "nautobot_topology_views": {
+        "allow_coordinates_saving": True,
+        "always_save_coordinates": False,
+    },
+    "nautobot_ssot": {
+        "hide_example_jobs": False,
     },
     "nautobot_device_lifecycle_mgmt": {},  # 신규 앱 설정 (기본은 빈 딕셔너리)
 }

@@ -16,8 +16,14 @@ x-nautobot-base: &nautobot-base
     - NAUTOBOT_SUPERUSER_PASSWORD=admin
     - NAUTOBOT_SUPERUSER_EMAIL=admin@example.com
     - NAUTOBOT_SUPERUSER_API_TOKEN=0123456789abcdef0123456789abcdef01234567
+    - NAPALM_USERNAME=admin
+    - NAPALM_PASSWORD=admin
+    - DEVICE_SECRET=admin
+    - CISCO_USER=admin
+    - CISCO_PASSWORD=admin
   volumes:
     - ./nautobot_config.py:/opt/nautobot/nautobot_config.py:ro
+    - ./git_repos:/opt/nautobot/git_repos
   depends_on:
     - db
     - redis
